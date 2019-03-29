@@ -7,6 +7,6 @@ traintrim.txt
 .DS_Store
 dac/
 tensorflow
-training
+training*
 *.tar.gz
 *.p

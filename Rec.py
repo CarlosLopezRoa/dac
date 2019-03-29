@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[15]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -22,6 +22,8 @@ device_lib.list_local_devices()
 import pickle 
 from multiprocessing import Pool
 import os
+import time
+import datetime
 
 
 # In[ ]:
@@ -153,10 +155,16 @@ model.compile(tf.keras.optimizers.Adam(),
               metrics=['accuracy'])
 
 
+# In[18]:
+
+
+now = datetime.datetime.now().strftime("%Y%m%d%H%M")
+
+
 # In[ ]:
 
 
-checkpoint_path = "training/cp-{epoch:04d}.ckpt"
+checkpoint_path = "training"+now+"/cp-{epoch:04d}.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 cp_callback = tf.keras.callbacks.ModelCheckpoint(
     checkpoint_path, verbose=1, save_weights_only=True,

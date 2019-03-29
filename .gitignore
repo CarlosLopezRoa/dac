@@ -1,0 +1,12 @@
+*.csv
+train.txt
+test.txt
+testtrim.txt
+traintrim.txt
+.ipynb_checkpoints/
+.DS_Store
+dac/
+tensorflow
+training
+*.tar.gz
+*.p

@@ -30,14 +30,14 @@ from collections import Counter
 import itertools
 
 
-# In[ ]:
+# In[46]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
 #! head -n 10000000 train.txt > traintrim.txt
 
 
-# In[ ]:
+# In[47]:
 
 
 #! head -n 10000000 test.csv > testtrim.csv
@@ -77,7 +77,7 @@ def encode_test_column(col):
 
 if preprocess: 
     print('Import')
-    train_gen = pd.read_csv("traintrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    train_gen = pd.read_csv("train.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     train = pd.concat([chunk for chunk in tqdm(train_gen)])
     test_gen = pd.read_csv("test.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     test = pd.concat([chunk for chunk in tqdm(test_gen)])
@@ -99,7 +99,7 @@ if preprocess:
     test = test.fillna(0)#.loc[:,list(range(13))].values
     print('Export')
     
-    train.to_csv('traintrim.csv', index=None, header=False)
+    train.to_csv('train.csv', index=None, header=False)
     test.to_csv('test.csv', index=None, header=False)
     
     
@@ -114,7 +114,7 @@ if preprocess:
 
 
 print("Import preprocessed CSV")
-train_gen = pd.read_csv("traintrim.csv",  header=None, engine='c', chunksize = 100000)
+train_gen = pd.read_csv("train.csv",  header=None, engine='c', chunksize = 100000)
 train = pd.concat([chunk for chunk in tqdm(train_gen)])
 test_gen = pd.read_csv("test.csv", header=None, engine='c', chunksize = 100000)
 test = pd.concat([chunk for chunk in tqdm(test_gen)]).values

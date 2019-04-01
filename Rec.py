@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[15]:
+# In[36]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -24,31 +24,43 @@ from multiprocessing import Pool
 import os
 import time
 import datetime
+import matplotlib as plt
+import seaborn as sns
+from collections import Counter
+import itertools
 
 
 # In[ ]:
 
 
-#! head -n 1000 train.csv > traintrim.csv
+#! head -n 10000000 train.csv > traintrim.csv
+#! head -n 10000000 train.txt > traintrim.txt
 
 
 # In[ ]:
 
 
-#! head -n 1000 test.csv > testtrim.csv
+#! head -n 10000000 test.csv > testtrim.csv
+#! head -n 10000000 test.txt > testtrim.txt
 
 
-# In[ ]:
+# In[39]:
 
 
-preprocess = False
+preprocess = True
 
 
-# In[ ]:
+# In[40]:
 
 
 def encode_column(col):
     encoder = preprocessing.LabelEncoder()
+    #small_vals = train.groupby(col).count()[0].where(lambda x: x <= 1).dropna().apply(lambda x: '1').to_dict()
+    #train.iloc[:,col] = train.iloc[:,col].apply(lambda x : small_vals.get(x,x))
+    set_ = train.loc[:, col].values
+    c = Counter(set_)
+    small_vals = dict(zip(list(dict(filter(lambda x: x[1] <= 3, c.most_common())).keys()), itertools.repeat('1') ))
+    train.iloc[:,col] = train.iloc[:,col].apply(lambda x : small_vals.get(x,x))
     encoder.fit(train.loc[:, col].fillna('nan').values)
     return encoder
 def transform_column(col):
@@ -60,19 +72,20 @@ def encode_test_column(col):
     return test.loc[:, col].fillna('nan').map(dic).fillna(dic.get('nan',0)).values
 
 
-# In[ ]:
+# In[41]:
 
 
 if preprocess: 
     print('Import')
-    train_gen = pd.read_csv("train.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    train_gen = pd.read_csv("traintrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     train = pd.concat([chunk for chunk in tqdm(train_gen)])
     test_gen = pd.read_csv("test.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     test = pd.concat([chunk for chunk in tqdm(test_gen)])
     print('Transform')
     from sklearn import preprocessing
     pool = Pool()
-    encoders = pool.map(encode_column, tqdm(range(14,40)))
+    #encoders = pool.map(encode_column, tqdm(range(14,40)))
+    encoders = list(map(encode_column, tqdm(range(14,40))))
     #transformed_cols = pool.map(transform_column, tqdm(range(14,40)))
     transformed_cols = list(map(transform_column, tqdm(range(14,40))))
     for col in tqdm(range(14,40)):
@@ -86,7 +99,7 @@ if preprocess:
     test = test.fillna(0)#.loc[:,list(range(13))].values
     print('Export')
     
-    train.to_csv('train.csv', index=None, header=False)
+    train.to_csv('traintrim.csv', index=None, header=False)
     test.to_csv('test.csv', index=None, header=False)
     
     
@@ -103,7 +116,7 @@ if preprocess:
 print("Import preprocessed CSV")
 train_gen = pd.read_csv("traintrim.csv",  header=None, engine='c', chunksize = 100000)
 train = pd.concat([chunk for chunk in tqdm(train_gen)])
-test_gen = pd.read_csv("testtrim.csv", header=None, engine='c', chunksize = 100000)
+test_gen = pd.read_csv("test.csv", header=None, engine='c', chunksize = 100000)
 test = pd.concat([chunk for chunk in tqdm(test_gen)]).values
 
 
@@ -155,7 +168,7 @@ model.compile(tf.keras.optimizers.Adam(),
               metrics=['accuracy'])
 
 
-# In[18]:
+# In[ ]:
 
 
 now = datetime.datetime.now().strftime("%Y%m%d%H%M")
@@ -170,6 +183,12 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     checkpoint_path, verbose=1, save_weights_only=True,
     # Save weights, every 5-epochs.
     period=5)
+early_cp = keras.callbacks.EarlyStopping(monitor='val_loss',
+                              min_delta=0.0100,
+                              patience=10,
+                              verbose=1, mode='auto')
+tboard_cp = keras.callbacks.TensorBoard(log_dir='./Graph/'+now, histogram_freq=0,  
+          write_graph=True, write_images=True)
 model.save_weights(checkpoint_path.format(epoch=0))
 
 
@@ -180,7 +199,7 @@ history = model.fit(X_train, y_train,
                     epochs=200, 
                     batch_size=512,  verbose=1,
                     validation_data=(X_test, y_test),
-                    callbacks = [cp_callback])
+                    callbacks = [cp_callback, early_cp, tboard_cp])
 
 
 # In[ ]:
@@ -234,8 +253,7 @@ results = model.evaluate(X_test, y_test)
 # In[ ]:
 
 
-import matplotlib as plt
-import seaborn as sns
+
 #sns.distplot(model.predict(X_test))
 
 

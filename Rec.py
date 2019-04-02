@@ -185,7 +185,7 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     period=5)
 early_cp = keras.callbacks.EarlyStopping(monitor='val_loss',
                               min_delta=0,
-                              patience=10,
+                              patience=20,
                               verbose=1, mode='auto', restore_best_weights=True)
 tboard_cp = keras.callbacks.TensorBoard(log_dir='./Graph/'+now, histogram_freq=0,  
           write_graph=True, write_images=True)

@@ -28,6 +28,8 @@ import matplotlib as plt
 import seaborn as sns
 from collections import Counter
 import itertools
+from sklearn.utils import class_weight
+import numpy as np
 
 
 # In[46]:
@@ -155,11 +157,12 @@ model = keras.Sequential([
     keras.layers.Flatten(input_shape=(X.shape[1],)),
     keras.layers.Dense(64, activation=tf.nn.relu),
     keras.layers.BatchNormalization(),
+    keras.layers.Dense(32, activation=tf.nn.relu),
+    keras.layers.BatchNormalization(),
     keras.layers.Dense(16, activation=tf.nn.relu),
     keras.layers.BatchNormalization(),
     keras.layers.Dense(8, activation=tf.nn.relu),
     keras.layers.BatchNormalization(),
-    keras.layers.Dropout(0.2),
     keras.layers.Dense(1, activation=tf.nn.sigmoid)
 ])
 
@@ -169,7 +172,9 @@ model.compile(tf.keras.optimizers.Adam(),
 
 
 # In[ ]:
-
+weights = class_weight.compute_class_weight('balanced',
+                                            np.unique(y_train),
+                                            y_train)
 
 now = datetime.datetime.now().strftime("%Y%m%d%H%M")
 
@@ -184,8 +189,8 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     # Save weights, every 5-epochs.
     period=5)
 early_cp = keras.callbacks.EarlyStopping(monitor='val_loss',
-                              min_delta=0,
-                              patience=20,
+                              min_delta=0.0001,
+                              patience=10,
                               verbose=1, mode='auto', restore_best_weights=True)
 tboard_cp = keras.callbacks.TensorBoard(log_dir='./Graph/'+now, histogram_freq=0,  
           write_graph=True, write_images=True)
@@ -199,7 +204,8 @@ history = model.fit(X_train, y_train,
                     epochs=200, 
                     batch_size=512,  verbose=1,
                     validation_data=(X_test, y_test),
-                    callbacks = [cp_callback, early_cp, tboard_cp])
+                    callbacks = [cp_callback, early_cp, tboard_cp],
+		    class_weight=weights)
 
 
 # In[ ]:

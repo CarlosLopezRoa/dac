@@ -155,6 +155,11 @@ print(test.shape)
 
 model = keras.Sequential([
     keras.layers.Flatten(input_shape=(X.shape[1],)),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(256, activation=tf.nn.relu),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(128, activation=tf.nn.relu),
+    keras.layers.BatchNormalization(),
     keras.layers.Dense(64, activation=tf.nn.relu),
     keras.layers.BatchNormalization(),
     keras.layers.Dense(32, activation=tf.nn.relu),
@@ -190,7 +195,7 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     period=5)
 early_cp = keras.callbacks.EarlyStopping(monitor='val_loss',
                               min_delta=0.0001,
-                              patience=10,
+                              patience=15,
                               verbose=1, mode='auto', restore_best_weights=True)
 tboard_cp = keras.callbacks.TensorBoard(log_dir='./Graph/'+now, histogram_freq=0,  
           write_graph=True, write_images=True)

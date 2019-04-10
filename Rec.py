@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[36]:
+# In[1]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -30,51 +30,50 @@ from collections import Counter
 import itertools
 from sklearn.utils import class_weight
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn import preprocessing
 
 
-# In[46]:
+# In[2]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
-#! head -n 10000000 train.txt > traintrim.txt
-
-
-# In[47]:
-
-
+#! head -n 10000 train.txt > traintrim.txt
 #! head -n 10000000 test.csv > testtrim.csv
-#! head -n 10000000 test.txt > testtrim.txt
+#! head -n 10000 test.txt > testtrim.txt
 
 
-# In[39]:
+# In[3]:
 
 
-preprocess = False
-
-
-# In[40]:
-
-
-def encode_column(col):
+def encode_column(col, df):
     encoder = preprocessing.LabelEncoder()
     #small_vals = train.groupby(col).count()[0].where(lambda x: x <= 1).dropna().apply(lambda x: '1').to_dict()
     #train.iloc[:,col] = train.iloc[:,col].apply(lambda x : small_vals.get(x,x))
-    set_ = train.loc[:, col].values
+    set_ = df.loc[:, col].values
     c = Counter(set_)
     small_vals = dict(zip(list(dict(filter(lambda x: x[1] <= 3, c.most_common())).keys()), itertools.repeat('1') ))
-    train.iloc[:,col] = train.iloc[:,col].apply(lambda x : small_vals.get(x,x))
-    encoder.fit(train.loc[:, col].fillna('nan').values)
+    df.loc[:,col] = df.loc[:,col].apply(lambda x : small_vals.get(x,x))
+    encoder.fit(df.loc[:, col].dropna().values)
     return encoder
-def transform_column(col):
-    encoder = encoders[col-14]
-    return encoder.transform(train.loc[:, col].fillna('nan').values)
-def encode_test_column(col): 
-    encoder = encoders[col-13]
+def transform_column(col, df):
+    encoder = encoders[col]
+    return encoder.transform(df.loc[:, col].dropna().values)
+def encode_test_column(col, df): 
+    encoder = encoders[col+1]
     dic = dict(zip(encoder.classes_, encoder.transform(encoder.classes_)))
-    return test.loc[:, col].fillna('nan').map(dic).fillna(dic.get('nan',0)).values
+    return df.loc[df.loc[:, col].dropna().index, col].map(dic).values
 
 
-# In[41]:
+# In[4]:
+
+
+preprocess = True
+
+
+# In[5]:
 
 
 if preprocess: 
@@ -83,27 +82,71 @@ if preprocess:
     train = pd.concat([chunk for chunk in tqdm(train_gen)])
     test_gen = pd.read_csv("test.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     test = pd.concat([chunk for chunk in tqdm(test_gen)])
+    print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
-    from sklearn import preprocessing
-    pool = Pool()
-    #encoders = pool.map(encode_column, tqdm(range(14,40)))
-    encoders = list(map(encode_column, tqdm(range(14,40))))
-    #transformed_cols = pool.map(transform_column, tqdm(range(14,40)))
-    transformed_cols = list(map(transform_column, tqdm(range(14,40))))
-    for col in tqdm(range(14,40)):
-        train.loc[:, col] = transformed_cols[col-14]
-    #transformed_test_cols = pool.map(encode_test_column, tqdm(range(13,39)))
-    transformed_test_cols = list(map(encode_test_column, tqdm(range(13,39))))
+    encoders = {x: encode_column(x, train) for x in tqdm(train.loc[:, train.columns > 13].columns)}
+    transformed_cols = {x: transform_column(x, train) for x in  tqdm(train.loc[:, train.columns > 13].columns)}
+    for col in tqdm(train.loc[:, train.columns > 13].columns):
+        train.loc[train.loc[:, col].dropna().index, col] = transformed_cols[col]
+    print('Learn')
+    predictors = dict()
+    not_nan_cols_dict = dict()
+    for col in tqdm(train.drop(0,axis=1).columns):
+        not_nan_cols = train.drop(0,axis=1).loc[train.loc[:, col].isna()].count()/len(train.loc[train.loc[:, col].isna()]) > .80
+        not_nan_cols_dict[col] = list(train.drop(0,axis=1).loc[:,not_nan_cols].columns)
+        train_nonan = train.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
+        if len(train_nonan.drop(col, axis = 1).values[0]) > 0:
+            x_nonan = train_nonan.drop(col, axis = 1).values
+            y_nonan = train.loc[train_nonan.index, col].values
+            #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
+            #for train_index, test_index in splitter.split(x_nonan, y_nonan):
+            #    x_train_nonan, x_test_nonan = x_nonan.loc[train_index].values, x_nonan.loc[test_index].values
+            #    y_train_nonan, y_test_nonan = y_nonan.loc[train_index].values, y_nonan.loc[test_index].values
+            if col in list(range(14)):
+                predictors[col] = RandomForestRegressor(max_depth=5, random_state=0, n_estimators=100, n_jobs=-1).fit(x_nonan, y_nonan)
+            elif col in list(range(14,40)):
+                y_nonan=y_nonan.astype('int')
+                predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+    print('Predict')
+    for col in tqdm(predictors.keys()):
+        train.loc[train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().index, col] = predictors[col].predict(train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna())
+    print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
+    print('Transform')
+    transformed_test_cols = {x: encode_test_column(x, test) for x in tqdm(test.loc[:, test.columns > 12].columns)}
     for col in tqdm(range(13,39)):
-        test.loc[:, col] = transformed_test_cols[col-13]
+        test.loc[test.loc[:, col].dropna().index, col] = transformed_test_cols[col]
+    print('Learn')
+    predictors = dict()
+    not_nan_cols_dict = dict()
+    for col in tqdm(test.columns):
+        not_nan_cols = test.loc[test.loc[:, col].isna()].count()/len(test.loc[test.loc[:, col].isna()]) > .80
+        not_nan_cols_dict[col] = list(test.loc[:,not_nan_cols].columns)
+        test_nonan = test.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
+        if len(test_nonan.drop(col, axis = 1).values[0]) > 0:
+            x_nonan = test_nonan.drop(col, axis = 1).values
+            y_nonan = test.loc[test_nonan.index, col].values
+            #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
+            #for train_index, test_index in splitter.split(x_nonan, y_nonan):
+            #    x_train_nonan, x_test_nonan = x_nonan.loc[train_index].values, x_nonan.loc[test_index].values
+            #    y_train_nonan, y_test_nonan = y_nonan.loc[train_index].values, y_nonan.loc[test_index].values
+            if col in list(range(13)):
+                predictors[col] = RandomForestRegressor(max_depth=5, random_state=0, n_estimators=100, n_jobs=-1).fit(x_nonan, y_nonan)
+            elif col in list(range(13,40)):
+                y_nonan=y_nonan.astype('int')
+                predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+    print('Predict')
+    for col in tqdm(predictors.keys()):
+        test.loc[test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().index, col] = predictors[col].predict(test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna())
+    print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
-    train = train.fillna(0)#.loc[:,list(range(14))]
-    test = test.fillna(0)#.loc[:,list(range(13))].values
+    train = train.fillna(0)
+    test = test.fillna(0)
+    print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
+
     print('Export')
     
     train.to_csv('train.csv', index=None, header=False)
     test.to_csv('test.csv', index=None, header=False)
-    
     
     #with open("train.p","wb") as filehandler:
     #    pickle.dump(train, filehandler, protocol=4)
@@ -133,7 +176,7 @@ X = train.drop(0, axis = 1)
 y = train[0]#.values.reshape([-1,1])
 #enc = OneHotEncoder(sparse=False)
 #y = enc.fit_transform(y)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
 for train_index, test_index in splitter.split(X, y):
     X_train, X_test = X.loc[train_index].values, X.loc[test_index].values
@@ -177,6 +220,8 @@ model.compile(tf.keras.optimizers.Adam(),
 
 
 # In[ ]:
+
+
 weights = class_weight.compute_class_weight('balanced',
                                             np.unique(y_train),
                                             y_train)

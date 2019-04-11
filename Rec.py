@@ -160,7 +160,7 @@ if preprocess:
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [15]:
+        if col not in [15,24,38]:
             print(col)
             not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(13)):

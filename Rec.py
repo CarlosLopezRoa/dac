@@ -161,7 +161,7 @@ if preprocess:
             test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
         else:
             for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
-            test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+                test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
     train = train.fillna(0)

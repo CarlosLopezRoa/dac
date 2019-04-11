@@ -157,7 +157,11 @@ if preprocess:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
         not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-        test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+        if col in list(range(13)):
+            test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+        else:
+            for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
+            test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
     train = train.fillna(0)

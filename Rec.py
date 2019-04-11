@@ -123,12 +123,13 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-        if col in list(range(14)):
-            train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
-        else:
-            for index in tqdm(chunks(not_nan_col_lines.index, 10000 if col in [23] else 1000000)):
-                train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+        if col not in [23]:
+            not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+            if col in list(range(14)):
+                train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+            else:
+                for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
+                    train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
     transformed_test_cols = {x: encode_test_column(x, test) for x in tqdm(test.loc[:, test.columns > 12].columns)}
@@ -159,12 +160,13 @@ if preprocess:
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-        if col in list(range(13)):
-            test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
-        else:
-            for index in tqdm(chunks(not_nan_col_lines.index, 100000 if col in [14,22] else 1000000)):
-                test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+        if col not in [14]:
+            not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+            if col in list(range(13)):
+                test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+            else:
+                for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
+                    test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
     train = train.fillna(0)

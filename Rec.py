@@ -103,10 +103,10 @@ if preprocess:
             #    x_train_nonan, x_test_nonan = x_nonan.loc[train_index].values, x_nonan.loc[test_index].values
             #    y_train_nonan, y_test_nonan = y_nonan.loc[train_index].values, y_nonan.loc[test_index].values
             if col in list(range(14)):
-                predictors[col] = RandomForestRegressor(max_depth=5, random_state=0, n_estimators=100, n_jobs=-1).fit(x_nonan, y_nonan)
+                predictors[col] = RandomForestRegressor(max_depth=3, random_state=0, n_estimators=50, n_jobs=10).fit(x_nonan, y_nonan)
             elif col in list(range(14,40)):
                 y_nonan=y_nonan.astype('int')
-                predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+                predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
     with open("predictorstrain.p","wb") as filehandler:
         pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
@@ -135,10 +135,10 @@ if preprocess:
             #    x_train_nonan, x_test_nonan = x_nonan.loc[train_index].values, x_nonan.loc[test_index].values
             #    y_train_nonan, y_test_nonan = y_nonan.loc[train_index].values, y_nonan.loc[test_index].values
             if col in list(range(13)):
-                predictors[col] = RandomForestRegressor(max_depth=5, random_state=0, n_estimators=100, n_jobs=-1).fit(x_nonan, y_nonan)
+                predictors[col] = RandomForestRegressor(max_depth=3, random_state=0, n_estimators=50, n_jobs=10).fit(x_nonan, y_nonan)
             elif col in list(range(13,40)):
                 y_nonan=y_nonan.astype('int')
-                predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+                predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
     with open("predictorstest.p","wb") as filehandler:
         pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')

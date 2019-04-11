@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[4]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -36,7 +36,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn import preprocessing
 
 
-# In[ ]:
+# In[5]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
@@ -45,7 +45,7 @@ from sklearn import preprocessing
 #! head -n 10000 test.txt > testtrim.txt
 
 
-# In[ ]:
+# In[6]:
 
 
 def encode_column(col, df):
@@ -67,13 +67,13 @@ def encode_test_column(col, df):
     return df.loc[df.loc[:, col].dropna().index, col].map(dic).values
 
 
-# In[ ]:
+# In[7]:
 
 
 preprocess = True
 
 
-# In[ ]:
+# In[8]:
 
 
 def chunks(l, n):
@@ -123,7 +123,7 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [23]:
+        if col not in [38]:
             not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(14)):
                 train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
@@ -160,7 +160,7 @@ if preprocess:
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [14]:
+        if col not in [16]:
             not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(13)):
                 test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)

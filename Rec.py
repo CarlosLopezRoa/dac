@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -36,7 +36,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn import preprocessing
 
 
-# In[2]:
+# In[ ]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
@@ -45,7 +45,7 @@ from sklearn import preprocessing
 #! head -n 10000 test.txt > testtrim.txt
 
 
-# In[3]:
+# In[ ]:
 
 
 def encode_column(col, df):
@@ -67,20 +67,20 @@ def encode_test_column(col, df):
     return df.loc[df.loc[:, col].dropna().index, col].map(dic).values
 
 
-# In[4]:
+# In[ ]:
 
 
 preprocess = True
 
 
-# In[5]:
+# In[ ]:
 
 
 if preprocess: 
     print('Import')
-    train_gen = pd.read_csv("train.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    train_gen = pd.read_csv("traintrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     train = pd.concat([chunk for chunk in tqdm(train_gen)])
-    test_gen = pd.read_csv("test.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    test_gen = pd.read_csv("testtrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     test = pd.concat([chunk for chunk in tqdm(test_gen)])
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
@@ -107,9 +107,14 @@ if preprocess:
             elif col in list(range(14,40)):
                 y_nonan=y_nonan.astype('int')
                 predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+    with open("predictorstrain.p","wb") as filehandler:
+        pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
+    with open("predictorstrain.p","rb") as filehandler:
+        predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        train.loc[train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().index, col] = predictors[col].predict(train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna())
+        for index, row in tqdm(train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().iterrows()):                      
+            train.loc[index, col] = predictors[col].predict(row.values.reshape(1, -1))
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
     transformed_test_cols = {x: encode_test_column(x, test) for x in tqdm(test.loc[:, test.columns > 12].columns)}
@@ -134,7 +139,11 @@ if preprocess:
             elif col in list(range(13,40)):
                 y_nonan=y_nonan.astype('int')
                 predictors[col] = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0, n_jobs=-1).fit(x_nonan, y_nonan)
+    with open("predictorstest.p","wb") as filehandler:
+        pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
+    with open("predictorstest.p","rb") as filehandler:
+        predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
         test.loc[test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().index, col] = predictors[col].predict(test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna())
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))

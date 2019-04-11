@@ -124,7 +124,7 @@ if preprocess:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
         not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-        for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+        for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
             train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')

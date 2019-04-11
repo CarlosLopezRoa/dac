@@ -123,7 +123,8 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [38]:
+        if col not in [99]:
+            print(col)
             not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(14)):
                 train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
@@ -160,7 +161,8 @@ if preprocess:
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [16]:
+        if col not in [99]:
+            print(col)
             not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(13)):
                 test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)

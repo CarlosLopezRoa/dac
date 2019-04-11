@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -36,7 +36,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn import preprocessing
 
 
-# In[ ]:
+# In[2]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
@@ -45,7 +45,7 @@ from sklearn import preprocessing
 #! head -n 10000 test.txt > testtrim.txt
 
 
-# In[ ]:
+# In[3]:
 
 
 def encode_column(col, df):
@@ -67,13 +67,23 @@ def encode_test_column(col, df):
     return df.loc[df.loc[:, col].dropna().index, col].map(dic).values
 
 
-# In[ ]:
+# In[4]:
 
 
 preprocess = True
 
 
-# In[ ]:
+# In[16]:
+
+
+def chunks(l, n):
+    # For item i in a range that is a length of l,
+    for i in range(0, len(l), n):
+        # Create an index range for l of n items:
+        yield l[i:i+n]
+
+
+# In[23]:
 
 
 if preprocess: 
@@ -113,8 +123,9 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        for index, row in tqdm(train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().iterrows()):                      
-            train.loc[index, col] = predictors[col].predict(row.values.reshape(1, -1))
+        not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+        for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+            train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
     transformed_test_cols = {x: encode_test_column(x, test) for x in tqdm(test.loc[:, test.columns > 12].columns)}
@@ -143,9 +154,11 @@ if preprocess:
         pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
     with open("predictorstest.p","rb") as filehandler:
-        predictors = pickle.load(filehandler)
+        predictors = pickle.load(filehandler)            
     for col in tqdm(predictors.keys()):
-        test.loc[test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna().index, col] = predictors[col].predict(test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna())
+        not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+        for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+            test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
     train = train.fillna(0)

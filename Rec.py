@@ -71,6 +71,8 @@ def encode_test_column(col, df):
 
 
 preprocess = True
+retrain = False
+retraintest = True
 
 
 # In[8]:
@@ -105,7 +107,7 @@ if preprocess:
         not_nan_cols = train.drop(0,axis=1).loc[train.loc[:, col].isna()].count()/len(train.loc[train.loc[:, col].isna()]) > .80
         not_nan_cols_dict[col] = list(train.drop(0,axis=1).loc[:,not_nan_cols].columns)
         train_nonan = train.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
-        if len(train_nonan.drop(col, axis = 1).values[0]) > 0:
+        if (len(train_nonan.drop(col, axis = 1).values[0]) > 0) & retrain:
             x_nonan = train_nonan.drop(col, axis = 1).values
             y_nonan = train.loc[train_nonan.index, col].values
             #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
@@ -124,6 +126,7 @@ if preprocess:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
         if col not in [39]:
+            print(col)
             not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(14)):
                 train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
@@ -142,7 +145,7 @@ if preprocess:
         not_nan_cols = test.loc[test.loc[:, col].isna()].count()/len(test.loc[test.loc[:, col].isna()]) > .80
         not_nan_cols_dict[col] = list(test.loc[:,not_nan_cols].columns)
         test_nonan = test.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
-        if len(test_nonan.drop(col, axis = 1).values[0]) > 0:
+        if (len(test_nonan.drop(col, axis = 1).values[0]) > 0) & retraintest:
             x_nonan = test_nonan.drop(col, axis = 1).values
             y_nonan = test.loc[test_nonan.index, col].values
             #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)

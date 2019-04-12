@@ -71,7 +71,7 @@ def encode_test_column(col, df):
 
 
 preprocess = True
-retrain = False
+retrain = True
 retraintest = True
 
 
@@ -119,8 +119,9 @@ if preprocess:
             elif col in list(range(14,40)):
                 y_nonan=y_nonan.astype('int')
                 predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
-    with open("predictorstrain.p","wb") as filehandler:
-        pickle.dump(predictors, filehandler, protocol=4)
+    if retrain:
+        with open("predictorstrain.p","wb") as filehandler:
+            pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
@@ -157,8 +158,9 @@ if preprocess:
             elif col in list(range(13,40)):
                 y_nonan=y_nonan.astype('int')
                 predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
-    with open("predictorstest.p","wb") as filehandler:
-        pickle.dump(predictors, filehandler, protocol=4)
+    if retrain:
+        with open("predictorstest.p","wb") as filehandler:
+            pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)

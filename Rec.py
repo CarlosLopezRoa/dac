@@ -90,9 +90,9 @@ def chunks(l, n):
 
 if preprocess: 
     print('Import')
-    train_gen = pd.read_csv("traintrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    train_gen = pd.read_csv("train.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     train = pd.concat([chunk for chunk in tqdm(train_gen)])
-    test_gen = pd.read_csv("testtrim.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
+    test_gen = pd.read_csv("test.txt", sep='\t', lineterminator='\n', header=None, engine='c', chunksize = 100000)
     test = pd.concat([chunk for chunk in tqdm(test_gen)])
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')

@@ -126,7 +126,7 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [16, 39]:
+        if col < 16 :
             print(col)
             not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(14)):

@@ -71,7 +71,7 @@ def encode_test_column(col, df):
 
 
 preprocess = True
-retrain = True
+retrain = False
 retraintest = True
 
 
@@ -126,13 +126,13 @@ if preprocess:
     with open("predictorstrain.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [39]:
+        if col not in [16, 39]:
             print(col)
             not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(14)):
                 train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
             else:
-                for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
+                for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
                     train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('Transform')
@@ -171,7 +171,7 @@ if preprocess:
             if col in list(range(13)):
                 test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
             else:
-                for index in tqdm(chunks(not_nan_col_lines.index, 1000000)):
+                for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
                     test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')

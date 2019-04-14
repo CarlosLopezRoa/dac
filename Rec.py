@@ -72,6 +72,7 @@ def encode_test_column(col, df):
 
 preprocess = True
 retrain = False
+repredict = True
 retraintest = True
 
 
@@ -123,18 +124,20 @@ if preprocess:
         with open("predictorstrain.p","wb") as filehandler:
             pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
-    with open("predictorstrain.p","rb") as filehandler:
-        predictors = pickle.load(filehandler)
-    for col in tqdm(predictors.keys()):
-        if col < 16 :
-            print(col)
-            not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-            if col in list(range(14)):
-                train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
-            else:
-                for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
-                    train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
-    print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
+    if repredict:
+        with open("predictorstrain.p","rb") as filehandler:
+            predictors = pickle.load(filehandler)
+        for col in tqdm(predictors.keys()):
+            if col < 16 :
+                print(col)
+                not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+                if col in list(range(14)):
+                    train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+                else:
+                    for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+                        train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+        print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
+        train.to_csv('train.csv', index=None, header=False)
     print('Transform')
     transformed_test_cols = {x: encode_test_column(x, test) for x in tqdm(test.loc[:, test.columns > 12].columns)}
     for col in tqdm(range(13,39)):
@@ -158,14 +161,14 @@ if preprocess:
             elif col in list(range(13,40)):
                 y_nonan=y_nonan.astype('int')
                 predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
-    if retrain:
+    if retraintest:
         with open("predictorstest.p","wb") as filehandler:
             pickle.dump(predictors, filehandler, protocol=4)
     print('Predict')
     with open("predictorstest.p","rb") as filehandler:
         predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col not in [15,24,38]:
+        if col < 13:
             print(col)
             not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
             if col in list(range(13)):

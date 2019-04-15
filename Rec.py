@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[4]:
+# In[18]:
 
 
 from __future__ import absolute_import, division, print_function
@@ -34,9 +34,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn import preprocessing
+from keras.utils import np_utils
+from keras.wrappers.scikit_learn import KerasClassifier
 
 
-# In[5]:
+# In[2]:
 
 
 #! head -n 10000000 train.csv > traintrim.csv
@@ -45,7 +47,7 @@ from sklearn import preprocessing
 #! head -n 10000 test.txt > testtrim.txt
 
 
-# In[6]:
+# In[3]:
 
 
 def encode_column(col, df):
@@ -67,16 +69,48 @@ def encode_test_column(col, df):
     return df.loc[df.loc[:, col].dropna().index, col].map(dic).values
 
 
-# In[7]:
+# In[1]:
+
+
+class neural_estimator():
+    def __init__(self, x, y, size=64):
+        self.x = x
+        self.y = np_utils.to_categorical(y)
+        self.size = size
+        self.model = KerasClassifier(build_fn=self.create_model, epochs=50, batch_size=512, verbose=0) #self.create_model_()
+        
+    def create_model(self):
+        model = keras.Sequential([
+            keras.layers.Flatten(input_shape=(self.x.shape[1],)),
+            keras.layers.BatchNormalization(),
+            keras.layers.Dense(self.size, activation=tf.nn.relu),
+            keras.layers.BatchNormalization(),
+            keras.layers.Dense(self.size, activation=tf.nn.relu),
+            keras.layers.BatchNormalization(),
+            keras.layers.Dense(self.y.shape[1], activation=tf.nn.softmax)
+        ])
+
+        model.compile(tf.keras.optimizers.Adam(),
+                      loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+        return model
+
+
+    def fit(self):
+        self.model.fit(self.x, self.y)
+        return self.model
+
+
+# In[10]:
 
 
 preprocess = True
-retrain = False
+retrain = True
 repredict = True
 retraintest = True
 
 
-# In[8]:
+# In[11]:
 
 
 def chunks(l, n):
@@ -86,7 +120,7 @@ def chunks(l, n):
         yield l[i:i+n]
 
 
-# In[ ]:
+# In[13]:
 
 
 if preprocess: 
@@ -108,7 +142,7 @@ if preprocess:
         not_nan_cols = train.drop(0,axis=1).loc[train.loc[:, col].isna()].count()/len(train.loc[train.loc[:, col].isna()]) > .80
         not_nan_cols_dict[col] = list(train.drop(0,axis=1).loc[:,not_nan_cols].columns)
         train_nonan = train.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
-        if (len(train_nonan.drop(col, axis = 1).values[0]) > 0) & retrain & (col < 14):
+        if (len(train_nonan.drop(col, axis = 1).values[0]) > 0) & retrain:
             x_nonan = train_nonan.drop(col, axis = 1).values
             y_nonan = train.loc[train_nonan.index, col].values
             #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
@@ -119,23 +153,17 @@ if preprocess:
                 predictors[col] = RandomForestRegressor(max_depth=3, random_state=0, n_estimators=50, n_jobs=10).fit(x_nonan, y_nonan)
             elif col in list(range(14,40)):
                 y_nonan=y_nonan.astype('int')
-                predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
-    if retrain:
-        with open("predictorstrain.p","wb") as filehandler:
-            pickle.dump(predictors, filehandler, protocol=4)
+                predictors[col] = neural_estimator(x_nonan,y_nonan).fit()#RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan
     print('Predict')
     if repredict:
-        with open("predictorstrain.p","rb") as filehandler:
-            predictors = pickle.load(filehandler)
         for col in tqdm(predictors.keys()):
-            if col < 14 :
-                print(col)
-                not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-                if col in list(range(14)):
-                    train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
-                else:
-                    for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
-                        train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+            print(col)
+            not_nan_col_lines = train.loc[train.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+            if col in list(range(14)):
+                train.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+            else:
+                for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+                    train.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
         print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
         train.to_csv('train.csv', index=None, header=False)
     print('Transform')
@@ -149,7 +177,7 @@ if preprocess:
         not_nan_cols = test.loc[test.loc[:, col].isna()].count()/len(test.loc[test.loc[:, col].isna()]) > .80
         not_nan_cols_dict[col] = list(test.loc[:,not_nan_cols].columns)
         test_nonan = test.loc[:, np.append(np.array(not_nan_cols_dict[col]), col)].dropna()#.drop(0,axis=1)
-        if (len(test_nonan.drop(col, axis = 1).values[0]) > 0) & retraintest & (col < 13):
+        if (len(test_nonan.drop(col, axis = 1).values[0]) > 0) & retraintest:
             x_nonan = test_nonan.drop(col, axis = 1).values
             y_nonan = test.loc[test_nonan.index, col].values
             #splitter = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=0)
@@ -160,22 +188,16 @@ if preprocess:
                 predictors[col] = RandomForestRegressor(max_depth=3, random_state=0, n_estimators=50, n_jobs=10).fit(x_nonan, y_nonan)
             elif col in list(range(13,40)):
                 y_nonan=y_nonan.astype('int')
-                predictors[col] = RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
-    if retraintest:
-        with open("predictorstest.p","wb") as filehandler:
-            pickle.dump(predictors, filehandler, protocol=4)
+                predictors[col] = neural_estimator(x_nonan,y_nonan).fit()#RandomForestClassifier(n_estimators=50, max_depth=3, random_state=0, n_jobs=10).fit(x_nonan, y_nonan)
     print('Predict')
-    with open("predictorstest.p","rb") as filehandler:
-        predictors = pickle.load(filehandler)
     for col in tqdm(predictors.keys()):
-        if col < 13:
-            print(col)
-            not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
-            if col in list(range(13)):
-                test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
-            else:
-                for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
-                    test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
+        print(col)
+        not_nan_col_lines = test.loc[test.loc[:,col].isna(), not_nan_cols_dict[col]].dropna()
+        if col in list(range(13)):
+            test.loc[not_nan_col_lines.index, col] = predictors[col].predict(not_nan_col_lines)
+        else:
+            for index in tqdm(chunks(not_nan_col_lines.index, 100000)):
+                test.loc[index, col] = predictors[col].predict(not_nan_col_lines.loc[index,:].values)
     print(np.mean((train.count()/len(train)).values), np.mean((test.count()/len(test)).values))
     print('filna')
     train = train.fillna(0)
